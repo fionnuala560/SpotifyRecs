@@ -1,0 +1,6 @@
+streamlit
+spotipy
+pandas
+scikit-learn
+matplotlib
+seaborn
