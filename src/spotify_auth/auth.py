@@ -44,5 +44,5 @@ def authenticate_spotify():
     if token_info:
         return spotipy.Spotify(auth=token_info["access_token"])
     else:
-        st.error("Could not authenticate with Spotify.")
+        st.warning("Please authenticate with Spotify.")
         return None
