@@ -13,9 +13,8 @@ if sp:
     user = sp.current_user()
     st.write(f"Welcome, {user['display_name']}!")
 
-    results = sp.current_user_recently_played(limit=10)
+    results = sp.current_user_top_tracks(limit=10)
     for item in results['items']:
-        track = item['track']
-        st.write(f"{track['name']} by {', '.join(artist['name'] for artist in track['artists'])}")
+        st.write(f"{item['name']} by {', '.join(artist['name'] for artist in item['artists'])}")
 else:
     st.write("Authentication failed. Please try again.")
