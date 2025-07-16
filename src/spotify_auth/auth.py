@@ -35,6 +35,11 @@ def authenticate_spotify():
             st.session_state.token_info = token_info
 
     token_info = st.session_state.get("token_info")
+
+    if sp_oauth.is_token_expired(token_info):
+        token_info = sp_oauth.refresh_access_token(token_info['refresh_token'])
+        st.session_state.token_info = token_info
+
     if token_info and not SpotifyOAuth(client_id, client_secret, redirect_uri).is_token_expired(token_info):
         sp = spotipy.Spotify(auth=token_info["access_token"])
         return sp
