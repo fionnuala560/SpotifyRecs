@@ -24,10 +24,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run application
-        env:
-            SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
-            SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
-            SPOTIFY_REDIRECT_URI: ${{ secrets.SPOTIFY_REDIRECT_URI }}
+      - name: Set up ngrok
         run: |
-            streamlit run src/app/app.py
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list >/dev/null
+          sudo apt update && sudo apt install ngrok
+
+      - name: Run application with ngrok
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_REDIRECT_URI: ${{ secrets.SPOTIFY_REDIRECT_URI }}
+        run: |
+          nohup streamlit run src/app/app.py --server.port 8501 --server.address 0.0.0.0 &
+          sleep 5
+          ngrok http 8501 > ngrok.log &
+          sleep 5
+          cat ngrok.log | grep -o "https://[a-z0-9]*\.ngrok\.io" > ngrok_url.txt
+          echo "Your app is available at: $(cat ngrok_url.txt)"
