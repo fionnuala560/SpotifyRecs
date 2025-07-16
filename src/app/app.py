@@ -8,6 +8,8 @@ from spotify_auth.auth import authenticate_spotify
 st.title("Spotify Data Explorer")
 
 sp = authenticate_spotify()
+if not sp:
+    st.stop()
 
 if sp:
     user = sp.current_user()
