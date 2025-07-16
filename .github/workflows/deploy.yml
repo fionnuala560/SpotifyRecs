@@ -36,6 +36,8 @@ jobs:
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
           SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
           SPOTIFY_REDIRECT_URI: ${{ secrets.SPOTIFY_REDIRECT_URI }}
+          STREAMLIT_BROWSER_GATHER_USAGE_STATS: false
+          STREAMLIT_HEADLESS: true
         run: |
           nohup streamlit run src/app/app.py --server.port 8501 --server.address 0.0.0.0 &
           sleep 5
@@ -43,3 +45,9 @@ jobs:
           sleep 5
           cat ngrok.log | grep -o "https://[a-z0-9]*\.ngrok\.io" > ngrok_url.txt
           echo "Your app is available at: $(cat ngrok_url.txt)"
+
+      - name: Upload ngrok URL
+        uses: actions/upload-artifact@v3
+        with:
+          name: ngrok-url
+          path: ngrok_url.txt
