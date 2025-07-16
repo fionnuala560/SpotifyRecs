@@ -47,7 +47,7 @@ jobs:
           echo "Your app is available at: $(cat ngrok_url.txt)"
 
       - name: Upload ngrok URL
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ngrok-url
           path: ngrok_url.txt
