@@ -19,12 +19,11 @@ def authenticate_spotify():
 
     if "token_info" not in st.session_state:
         token_info = sp_oauth.get_cached_token()
-
         if not token_info:
             auth_url = sp_oauth.get_authorize_url()
             st.markdown(f"### Step 1: [Click here to log in with Spotify]({auth_url})")
-            query_params = st.query_params
 
+            query_params = st.query_params
             if "code" in query_params:
                 code = query_params["code"][0]
                 try:
@@ -33,35 +32,18 @@ def authenticate_spotify():
                 except spotipy.oauth2.SpotifyOauthError:
                     st.error("There was a problem authorizing with Spotify. Try logging in again.")
                     return None
-            else:
-                return None  #
         else:
             st.session_state.token_info = token_info
 
-    # Step 2: Refresh if expired
     token_info = st.session_state.get("token_info")
-    if not token_info:
-        st.error("Token not found. Please authenticate with Spotify.")
-        return None
 
-    if sp_oauth.is_token_expired(token_info):
-        try:
-            token_info = sp_oauth.refresh_access_token(token_info['refresh_token'])
-            st.session_state.token_info = token_info
-        except Exception as e:
-            st.error("Failed to refresh token. Please re-authenticate.")
-            st.write(e)
-            return None
+    # Refresh token if expired
+    if token_info and sp_oauth.is_token_expired(token_info):
+        token_info = sp_oauth.refresh_access_token(token_info['refresh_token'])
+        st.session_state.token_info = token_info
 
-    # Step 3: Use token
-    if not sp_oauth.is_token_expired(token_info):
-        sp = spotipy.Spotify(auth=token_info["access_token"])
-        return sp
+    if token_info:
+        return spotipy.Spotify(auth=token_info["access_token"])
     else:
-        st.error("Token expired. Please reload the app and re-authenticate.")
+        st.warning("Please authenticate with Spotify.")
         return None
-
-    if st.button("Reset Login"):
-        if "token_info" in st.session_state:
-            del st.session_state["token_info"]
-        st.experimental_rerun()
