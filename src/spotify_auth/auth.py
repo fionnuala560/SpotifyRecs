@@ -4,9 +4,13 @@ import streamlit as st
 
 client_id = st.secrets["spotify"]["client_id"]
 client_secret = st.secrets["spotify"]["client_secret"]
-redirect_uri = st.secrets["spotify"]["redirect_uri"]
 scope = "user-library-read user-read-recently-played user-top-read"
 
+# Dynamically set redirect URI
+if st.secrets.get("env") == "cloud":
+    redirect_uri = "https://your-app-name.streamlit.app/"
+else:
+    redirect_uri = "http://127.0.0.1:8501/"
 
 def authenticate_spotify():
     sp_oauth = SpotifyOAuth(
@@ -21,8 +25,7 @@ def authenticate_spotify():
         token_info = sp_oauth.get_cached_token()
         if not token_info:
             auth_url = sp_oauth.get_authorize_url()
-            st.markdown(f"### Step 1: [Click here to log in with Spotify]({auth_url})")
-
+            st.markdown(f"[Click here to log in with Spotify]({auth_url})")
             query_params = st.query_params
             if "code" in query_params:
                 code = query_params["code"][0]
