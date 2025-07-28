@@ -7,10 +7,7 @@ client_secret = st.secrets["spotify"]["client_secret"]
 scope = "user-library-read user-read-recently-played user-top-read"
 
 # Dynamically set redirect URI
-if st.secrets.get("env") == "cloud":
-    redirect_uri = "https://your-app-name.streamlit.app/"
-else:
-    redirect_uri = "http://127.0.0.1:8501/"
+redirect_uri = st.secrets["spotify"]["redirect_uri"]
 
 def authenticate_spotify():
     sp_oauth = SpotifyOAuth(
