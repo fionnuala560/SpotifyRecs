@@ -60,3 +60,8 @@ def authenticate_spotify():
     else:
         st.error("Token expired. Please reload the app and re-authenticate.")
         return None
+
+    if st.button("Reset Login"):
+        if "token_info" in st.session_state:
+            del st.session_state["token_info"]
+        st.experimental_rerun()
