@@ -87,28 +87,26 @@ for i in range(0, len(sections), 2):
                     unsafe_allow_html=True
                 )
 
+st.markdown(
+    """
+    <style>
+    .recommend-button button {
+        background-color: #1DB954;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border: none;
+        border-radius: 5px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
+if st.button("🔁 Generate Recommendations", key="generate_recommendations_button"):
+    st.session_state.view = "recommendations"
+    st.experimental_rerun()
 
-    # Generate Recommendations Button
-    st.markdown(
-        """
-        <style>
-        .recommend-button button {
-            background-color: #1DB954;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-            border: none;
-            border-radius: 5px;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-    if st.button("🔁 Generate Recommendations", key="generate_recommendations_button"):
-        st.session_state.view = "recommendations"
-        st.experimental_rerun()
 
 # # ---- RECOMMENDATIONS VIEW ----
 # elif st.session_state.view == "recommendations":
