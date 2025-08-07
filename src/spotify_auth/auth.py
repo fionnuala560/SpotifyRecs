@@ -21,9 +21,8 @@ def authenticate_spotify():
         auth_url = sp_oauth.get_authorize_url()
         st.markdown(f"[Click here to log in with Spotify]({auth_url})")
 
-        query_params = st.experimental_get_query_params()
-        if "code" in query_params:
-            code = query_params["code"]
+        if "code" in st.query_params:
+            code = st.query_params["code"]
             try:
                 token_info = sp_oauth.get_access_token(code, as_dict=True)
                 st.session_state["token_info"] = token_info
