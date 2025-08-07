@@ -18,10 +18,11 @@ def authenticate_spotify():
     )
 
     if "token_info" not in st.session_state:
-        auth_url = sp_oauth.get_authorize_url()
-        st.markdown(f"[Click here to log in with Spotify]({auth_url})")
-
-        if "code" in st.query_params:
+        # Only show login message if there's no code in query params
+        if "code" not in st.query_params:
+            auth_url = sp_oauth.get_authorize_url()
+            st.markdown(f"[Click here to log in with Spotify]({auth_url})")
+        else:
             code = st.query_params["code"]
             try:
                 token_info = sp_oauth.get_access_token(code, as_dict=True)
