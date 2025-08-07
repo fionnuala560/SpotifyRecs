@@ -5,7 +5,15 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from spotify_auth.auth import authenticate_spotify
 
 
-st.title("Spotify Data Explorer")
+st.markdown(
+    """
+    <div padding: 2rem; border-radius: 10px;'>
+        <h1 style='color: white; font-size: 2.5rem; margin-bottom: 0.5rem;'>🎵 SpotifyRecs</h1>
+        <p style='color: white; font-size: 1.2rem;'>Your personal Spotify stats and music recommendations</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 sp = authenticate_spotify()
 if not sp:
