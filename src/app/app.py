@@ -13,12 +13,19 @@ sp = authenticate_spotify()
 if not sp:
     st.stop()
 
+# Get colours from config.toml
+spotifyGreen = "#1ED760"
+blackBackground = "#121212"
+whiteText = "#FFFFFF"
+blackText = "#121212"
+font = "sans serif"
+
 # -- HEADER --
 st.markdown(
-    """
+    f"""
     <div padding: 2rem; border-radius: 10px;'>
-        <h1 style='color: white; font-size: 2.5rem; margin-bottom: 0.5rem;'>🎵 SpotifyRecs</h1>
-        <p style='color: white; font-size: 1.2rem;'>Your personal Spotify stats and music recommendations</p>
+        <h1 style='color: {whiteText}; font-size: 2.5rem; margin-bottom: 0.5rem;'>🎵 SpotifyRecs</h1>
+        <p style='color: {whiteText}; font-size: 1.2rem;'>Your personal Spotify stats and music recommendations</p>
     </div>
     """,
     unsafe_allow_html=True
@@ -73,13 +80,13 @@ for i in range(0, len(sections), 2):
                 st.markdown(
                     f"""
                         <div style='
-                            background-color: #1DB954;
+                            background-color: {spotifyGreen};
                             padding: 1.5rem;
                             border-radius: 20px;
                             margin-bottom: 2rem;
                         '>
-                            <h3 style='color:white; text-align:center;'>{section['title']}</h3>
-                            <ul style='color:white; font-size: 0.9rem; padding-left: 1rem;'>
+                            <h3 style='{blackText}; text-align:center;'>{section['title']}</h3>
+                            <ul style='{blackText}; font-size: 0.9rem; padding-left: 1rem;'>
                                 {''.join(f"<li>{item}</li>" for item in section['content'][:10])}
                             </ul>
                         </div>
