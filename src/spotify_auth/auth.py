@@ -27,7 +27,7 @@ def authenticate_spotify():
                 token_info = sp_oauth.get_access_token(code, as_dict=True)
                 st.session_state["token_info"] = token_info
             except spotipy.oauth2.SpotifyOauthError as e:
-                st.error(f"Authentication failed: {str(e)}")
+                st.warning(f"Please authenticate with Spotify")
                 return None
 
     # Get token info from session state
