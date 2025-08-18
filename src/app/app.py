@@ -4,16 +4,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from spotify_auth.auth import authenticate_spotify
 
-# Initial session state
-if "view" not in st.session_state:
-    st.session_state.view = "stats"
-
-# Authenticate with Spotify
-sp = authenticate_spotify()
-if not sp:
-    st.stop()
-
-# Get colours from config.toml
+# Define colours
 spotifyGreen = "#1ED760"
 blackBackground = "#121212"
 whiteText = "#FFFFFF"
@@ -30,6 +21,19 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# Initial session state
+if "view" not in st.session_state:
+    st.session_state.view = "stats"
+
+# Authenticate with Spotify
+sp = authenticate_spotify()
+if not sp:
+    st.stop()
+
+
+
+
 
 # ---- USER STATS VIEW ----
 
