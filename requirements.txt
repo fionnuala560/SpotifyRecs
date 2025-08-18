@@ -4,4 +4,3 @@ pandas
 scikit-learn
 matplotlib
 seaborn
--e ./src/spotify_auth
