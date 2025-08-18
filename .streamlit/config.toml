@@ -1,7 +1,5 @@
 [theme]
-spotifyGreen = "#1ED760"  # Spotify green
 backgroundColor = "#121212"  # Black
 secondaryBackgroundColor = "#121212"  # Dark grey
 textColor = "#FFFFFF"  # White
-altTextColor = '#121212' # Black for alt text
 font = "sans serif"
