@@ -1,155 +1,119 @@
 import streamlit as st
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from spotify_auth.auth import authenticate_spotify
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
 
-# Define colours
-spotifyGreen = "#1ED760"
-blackBackground = "#121212"
-whiteText = "#FFFFFF"
-blackText = "#121212"
-font = "sans serif"
+# --- Spotify API Setup ---
+sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
+    client_id="YOUR_CLIENT_ID",
+    client_secret="YOUR_CLIENT_SECRET",
+    redirect_uri="http://localhost:8888/callback",
+    scope="user-top-read"
+))
 
-# -- HEADER --
-st.markdown(
-    f"""
-    <div padding: 2rem; border-radius: 10px;'>
-        <h1 style='color: {whiteText}; font-size: 2.5rem; margin-bottom: 0.5rem;'>🎵 SpotifyRecs</h1>
-        <p style='color: {whiteText}; font-size: 1.2rem;'>Your personal Spotify stats and music recommendations</p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+# --- Streamlit Page Config ---
+st.set_page_config(page_title="Spotify Recs App", page_icon="🎵", layout="centered")
 
-# Initial session state
-if "view" not in st.session_state:
-    st.session_state.view = "stats"
+# --- Title and Header ---
+st.title("🎵 My Spotify Recommendations App")
+st.header("Discover tracks, artists, and genres tailored for you")
+st.write("See your top Spotify tracks, artists, and genres, and get personalized recommendations.")
 
-# Authenticate with Spotify
-sp = authenticate_spotify()
-if not sp:
-    st.stop()
-
-
-
-
-
-# ---- USER STATS VIEW ----
-
-top_tracks = sp.current_user_top_tracks(limit=10)
-top_artists = sp.current_user_top_artists(limit=10)
-
-genres = []
-for artist in top_artists["items"]:
-    genres.extend(artist["genres"])
-top_genres = list(set(genres))[:10]
-
-top_albums = list({
-                      track['album']['id']: track['album']
-                      for track in top_tracks["items"]
-                  }.values())
-
-sections = [
-    {
-        "title": "Top Tracks",
-        "content": [
-            f"{track['name']} by {', '.join(artist['name'] for artist in track['artists'])}"
-            for track in top_tracks["items"]
-        ]
-    },
-    {
-        "title": "Top Artists",
-        "content": [artist['name'] for artist in top_artists["items"]]
-    },
-    {
-        "title": "Top Genres",
-        "content": top_genres
-    },
-    {
-        "title": "Top Albums",
-        "content": [
-            f"{album['name']} by {', '.join(artist['name'] for artist in album['artists'])}"
-            for album in top_albums
-        ]
-    }
-]
-
-for i in range(0, len(sections), 2):
-    cols = st.columns(2)
-    for j in range(2):
-        if i + j < len(sections):
-            section = sections[i + j]
-            with cols[j]:
-                st.markdown(
-                    f"""
-                        <div style='
-                            background-color: {spotifyGreen};
-                            padding: 1.5rem;
-                            border-radius: 20px;
-                            margin-bottom: 2rem;
-                        '>
-                            <h3 style='{blackText}; text-align:center;'>{section['title']}</h3>
-                            <ul style='{blackText}; font-size: 0.9rem; padding-left: 1rem;'>
-                                {''.join(f"<li>{item}</li>" for item in section['content'][:10])}
-                            </ul>
-                        </div>
-                        """,
-                    unsafe_allow_html=True
-                )
-
-st.markdown(
-    """
+# --- Custom CSS ---
+st.markdown("""
     <style>
-    .recommend-button button {
-        background-color: #1DB954;
-        color: white;
-        padding: 0.75rem 1.5rem;
-        font-size: 1rem;
-        border: none;
-        border-radius: 5px;
-    }
+        .box {
+            background-color: #1DB954;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 5px 0;
+            color: black;
+            font-weight: bold;
+        }
+        .recommendations {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            background-color: #191414;
+            color: white;
+        }
+        .recommendations a {
+            color: #1DB954;
+            text-decoration: none;
+        }
     </style>
-    """,
-    unsafe_allow_html=True
-)
+""", unsafe_allow_html=True)
 
-if st.button("🔁 Generate Recommendations", key="generate_recommendations_button"):
-    st.session_state.view = "recommendations"
-    st.experimental_rerun()
+# --- Fetch User's Top Data ---
+with st.spinner("Fetching your top Spotify data..."):
+    top_tracks = sp.current_user_top_tracks(limit=10, time_range="short_term")["items"]
+    top_artists = sp.current_user_top_artists(limit=10, time_range="short_term")["items"]
+
+# --- Display Top Tracks ---
+st.subheader("Your Top Tracks 🎶")
+for track in top_tracks:
+    st.markdown(f"<div class='box'>{track['name']} - {track['artists'][0]['name']}</div>", unsafe_allow_html=True)
+
+# --- Display Top Artists ---
+st.subheader("Your Top Artists 🎤")
+for artist in top_artists:
+    st.markdown(f"<div class='box'>{artist['name']}</div>", unsafe_allow_html=True)
+
+# --- Extract genres from top artists ---
+user_genres = []
+for artist in top_artists:
+    user_genres.extend(artist.get("genres", []))
+user_genres = list(set(user_genres))[:5]
+
+st.subheader("Your Top Genres 🎧")
+for g in user_genres:
+    st.markdown(f"<div class='box'>{g.title()}</div>", unsafe_allow_html=True)
+
+# --- Button to get recommendations ---
+if st.button("✨ Get Recommendations"):
+
+    # Prepare seeds
+    seed_tracks = [t["id"] for t in top_tracks[:2]]
+    seed_artists = [a["id"] for a in top_artists[:2]]
+    seed_genres = user_genres[:1]  # Just 1 genre
+
+    # Remove empty seeds to avoid errors
+    seeds = {}
+    if seed_tracks: seeds["seed_tracks"] = seed_tracks
+    if seed_artists: seeds["seed_artists"] = seed_artists
+    if seed_genres: seeds["seed_genres"] = seed_genres
+
+    if not seeds:
+        st.warning("Not enough seeds to generate recommendations.")
+    else:
+        try:
+            recs = sp.recommendations(limit=10, **seeds)["tracks"]
+            st.subheader("Recommended for You")
+            st.markdown("<div class='recommendations'>", unsafe_allow_html=True)
+            for track in recs:
+                st.markdown(f"- [{track['name']} - {track['artists'][0]['name']}]({track['external_urls']['spotify']})")
+            st.markdown("</div>", unsafe_allow_html=True)
+        except spotipy.exceptions.SpotifyException as e:
+            st.error(f"Could not generate recommendations: {e}")
 
 
-# # ---- RECOMMENDATIONS VIEW ----
-# elif st.session_state.view == "recommendations":
-#     st.markdown("## 🌟 Your Recommendations")
-#
-#     # Use top artist/track IDs for seed
-#     seed_artists = [a["id"] for a in sp.current_user_top_artists(limit=1)["items"]]
-#     seed_tracks = [t["id"] for t in sp.current_user_top_tracks(limit=1)["items"]]
-#
-#     recs = sp.recommendations(seed_artists=seed_artists, seed_tracks=seed_tracks, limit=10)
-#
-#     st.markdown("#### 🔊 Recommended Tracks")
-#     for track in recs["tracks"]:
-#         st.write(f"- {track['name']} by {', '.join(artist['name'] for artist in track['artists'])}")
-#
-#     st.markdown("#### 🎤 Recommended Artists")
-#     artist_names = set()
-#     for track in recs["tracks"]:
-#         for artist in track["artists"]:
-#             artist_names.add(artist["name"])
-#     for name in list(artist_names)[:10]:
-#         st.write(f"- {name}")
-#
-#     st.markdown("#### 🧬 Estimated Genres")
-#     genre_list = []
-#     for artist in recs["tracks"][0]["artists"]:
-#         artist_data = sp.artist(artist["id"])
-#         genre_list.extend(artist_data.get("genres", []))
-#     for genre in list(set(genre_list))[:10]:
-#         st.write(f"- {genre}")
-#
-#     # Back button
-#     if st.button("⬅️ Back to Your Stats"):
-#         st.session_state.view = "stats"
-#         st.experimental_rerun()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
