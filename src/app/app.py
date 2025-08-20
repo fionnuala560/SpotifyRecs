@@ -106,14 +106,16 @@ for g in user_genres:
         unsafe_allow_html=True
     )
 
-# --- Recommended Tracks by Genre (unique artists only) ---
-st.subheader("Recommended Tracks 🎧")
+# --- Recommended Tracks by Genre (unique artists & albums only, no repeats from previous list) ---
+st.subheader("Recommended Tracks by Genre 🎧")
 
-# Initialize session state for recommendations
+# Initialize session state
 if "recommended_tracks" not in st.session_state:
     st.session_state.recommended_tracks = []
 if "recommendations_generated" not in st.session_state:
     st.session_state.recommendations_generated = False
+if "previous_track_ids" not in st.session_state:
+    st.session_state.previous_track_ids = set()
 
 def fetch_recommendations():
     recommended_tracks = []
@@ -126,10 +128,15 @@ def fetch_recommendations():
                 results = sp.search(q=f"genre:{genre}", type="track", limit=20)
                 tracks = results.get("tracks", {}).get("items", [])
                 for t in tracks:
+                    track_id = t["id"]
                     artist_name = t["artists"][0]["name"]
                     album_name = t["album"]["name"]
-                    if artist_name not in seen_artists and album_name not in seen_albums:
+                    if (track_id not in st.session_state.previous_track_ids and
+                            artist_name not in seen_artists and
+                            album_name not in seen_albums):
+
                         recommended_tracks.append({
+                            "id": track_id,
                             "name": t["name"],
                             "artist": artist_name,
                             "album": album_name,
@@ -141,10 +148,12 @@ def fetch_recommendations():
             except spotipy.exceptions.SpotifyException as e:
                 st.warning(f"Could not fetch tracks for genre {genre}: {e}")
 
+    # Save newly recommended track IDs to previous_track_ids
+    st.session_state.previous_track_ids.update([t["id"] for t in recommended_tracks])
     st.session_state.recommended_tracks = recommended_tracks
     st.session_state.recommendations_generated = True
 
-# Show the initial button if recommendations haven't been generated
+# Only show the button if recommendations haven't been generated yet
 if not st.session_state.recommendations_generated:
     if st.button("Generate Recommendations"):
         fetch_recommendations()
@@ -177,11 +186,8 @@ if st.session_state.recommendations_generated and st.session_state.recommended_t
         )
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Show refresh button to regenerate recommendations
-    if st.button("Refresh Recommendations"):
-        st.session_state.recommendations_generated = False
-        st.session_state.recommended_tracks = []
-        fetch_recommendations()
+
+
 
 
 
