@@ -34,13 +34,27 @@ if not sp:
 # --- Custom CSS ---
 st.markdown("""
     <style>
-        .box {
+        .track-card, .artist-card, .genre-card {
             background-color: #1DB954;
-            padding: 10px;
-            border-radius: 10px;
+            color: white;
+            padding: 10px 15px;
             margin: 5px 0;
-            color: black;
+            border-radius: 12px;
             font-weight: bold;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .track-card:hover, .artist-card:hover, .genre-card:hover {
+            transform: scale(1.02);
+            cursor: pointer;
+        }
+        .track-card img, .artist-card img {
+            border-radius: 8px;
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
         }
         .recommendations {
             margin-top: 20px;
@@ -64,12 +78,20 @@ with st.spinner("Fetching your top Spotify data..."):
 # --- Display Top Tracks ---
 st.subheader("Your Top Tracks 🎶")
 for track in top_tracks:
-    st.markdown(f"<div class='box'>{track['name']} - {track['artists'][0]['name']}</div>", unsafe_allow_html=True)
+    album_img = track['album']['images'][0]['url'] if track['album']['images'] else ""
+    st.markdown(
+        f"<div class='track-card'><img src='{album_img}'><span>{track['name']} - {track['artists'][0]['name']}</span></div>",
+        unsafe_allow_html=True
+    )
 
 # --- Display Top Artists ---
 st.subheader("Your Top Artists 🎤")
 for artist in top_artists:
-    st.markdown(f"<div class='box'>{artist['name']}</div>", unsafe_allow_html=True)
+    artist_img = artist['images'][0]['url'] if artist['images'] else ""
+    st.markdown(
+        f"<div class='artist-card'><img src='{artist_img}'><span>{artist['name']}</span></div>",
+        unsafe_allow_html=True
+    )
 
 # --- Extract genres from top artists ---
 user_genres = []
@@ -79,11 +101,13 @@ user_genres = list(set(user_genres))[:5]
 
 st.subheader("Your Top Genres 🎧")
 for g in user_genres:
-    st.markdown(f"<div class='box'>{g.title()}</div>", unsafe_allow_html=True)
-
+    st.markdown(
+        f"<div class='genre-card'>{g.title()}</div>",
+        unsafe_allow_html=True
+    )
 
 # --- Recommended Tracks by Genre (unique artists only) ---
-st.subheader("Recommended Tracks 🎧")
+st.subheader("Recommended Tracks by Genre 🎧")
 
 if st.button("Generate Recommendations"):
     if user_genres:
@@ -101,36 +125,18 @@ if st.button("Generate Recommendations"):
                             recommended_tracks.append({
                                 "name": t["name"],
                                 "artist": artist_name,
-                                "url": t["external_urls"]["spotify"]
+                                "url": t["external_urls"]["spotify"],
+                                "img": t["album"]["images"][0]["url"] if t["album"]["images"] else ""
                             })
                             seen_artists.add(artist_name)
                 except spotipy.exceptions.SpotifyException as e:
                     st.warning(f"Could not fetch tracks for genre {genre}: {e}")
 
         if recommended_tracks:
-            # Add some styling
-            st.markdown("""
-                <style>
-                    .track-card {
-                        background-color: #1DB954;
-                        color: white;
-                        padding: 10px 15px;
-                        margin: 5px 0;
-                        border-radius: 12px;
-                        font-weight: bold;
-                        transition: transform 0.2s;
-                    }
-                    .track-card:hover {
-                        transform: scale(1.02);
-                        cursor: pointer;
-                    }
-                </style>
-            """, unsafe_allow_html=True)
-
             st.markdown("<div class='recommendations'>", unsafe_allow_html=True)
             for t in recommended_tracks[:10]:  # Limit to 10 tracks total
                 st.markdown(
-                    f"<div class='track-card'><a href='{t['url']}' target='_blank' style='color:white; text-decoration:none;'>{t['name']} - {t['artist']}</a></div>",
+                    f"<div class='track-card'><img src='{t['img']}'><a href='{t['url']}' target='_blank' style='color:white; text-decoration:none;'>{t['name']} - {t['artist']}</a></div>",
                     unsafe_allow_html=True
                 )
             st.markdown("</div>", unsafe_allow_html=True)
@@ -138,6 +144,7 @@ if st.button("Generate Recommendations"):
             st.info("Couldn't find top tracks for your genres.")
     else:
         st.info("No genres found from your top artists.")
+
 
 
 
