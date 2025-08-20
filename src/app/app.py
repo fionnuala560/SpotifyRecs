@@ -107,47 +107,82 @@ for g in user_genres:
     )
 
 # --- Recommended Tracks by Genre (unique artists only) ---
-st.subheader("Recommended Tracks by Genre 🎧")
+st.subheader("Recommended Tracks 🎧")
 
-if st.button("Generate Recommendations"):
-    if user_genres:
-        recommended_tracks = []
-        seen_artists = set()  # To avoid duplicate artists
-        seen_albums = set()   # To avoid duplicate albums
+# Initialize session state for recommendations
+if "recommended_tracks" not in st.session_state:
+    st.session_state.recommended_tracks = []
+if "recommendations_generated" not in st.session_state:
+    st.session_state.recommendations_generated = False
 
-        for genre in user_genres:
-            with st.spinner(f"Fetching top tracks for genre: {genre}..."):
-                try:
-                    results = sp.search(q=f"genre:{genre}", type="track", limit=20)
-                    tracks = results.get("tracks", {}).get("items", [])
-                    for t in tracks:
-                        artist_name = t["artists"][0]["name"]
-                        album_name = t["album"]["name"]
-                        if artist_name not in seen_artists and album_name not in seen_albums:
-                            recommended_tracks.append({
-                                "name": t["name"],
-                                "artist": artist_name,
-                                "album": album_name,
-                                "url": t["external_urls"]["spotify"],
-                                "img": t["album"]["images"][0]["url"] if t["album"]["images"] else ""
-                            })
-                            seen_artists.add(artist_name)
-                            seen_albums.add(album_name)
-                except spotipy.exceptions.SpotifyException as e:
-                    st.warning(f"Could not fetch tracks for genre {genre}: {e}")
+def fetch_recommendations():
+    recommended_tracks = []
+    seen_artists = set()
+    seen_albums = set()
 
-        if recommended_tracks:
-            st.markdown("<div class='recommendations'>", unsafe_allow_html=True)
-            for t in recommended_tracks[:10]:  # Limit to 10 tracks total
-                st.markdown(
-                    f"<div class='track-card'><img src='{t['img']}'><a href='{t['url']}' target='_blank' style='color:white; text-decoration:none;'>{t['name']} - {t['artist']}</a></div>",
-                    unsafe_allow_html=True
-                )
-            st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            st.info("Couldn't find top tracks for your genres.")
-    else:
-        st.info("No genres found from your top artists.")
+    for genre in user_genres:
+        with st.spinner(f"Fetching top tracks for genre: {genre}..."):
+            try:
+                results = sp.search(q=f"genre:{genre}", type="track", limit=20)
+                tracks = results.get("tracks", {}).get("items", [])
+                for t in tracks:
+                    artist_name = t["artists"][0]["name"]
+                    album_name = t["album"]["name"]
+                    if artist_name not in seen_artists and album_name not in seen_albums:
+                        recommended_tracks.append({
+                            "name": t["name"],
+                            "artist": artist_name,
+                            "album": album_name,
+                            "url": t["external_urls"]["spotify"],
+                            "img": t["album"]["images"][0]["url"] if t["album"]["images"] else ""
+                        })
+                        seen_artists.add(artist_name)
+                        seen_albums.add(album_name)
+            except spotipy.exceptions.SpotifyException as e:
+                st.warning(f"Could not fetch tracks for genre {genre}: {e}")
+
+    st.session_state.recommended_tracks = recommended_tracks
+    st.session_state.recommendations_generated = True
+
+# Show the initial button if recommendations haven't been generated
+if not st.session_state.recommendations_generated:
+    if st.button("Generate Recommendations"):
+        fetch_recommendations()
+
+# Show the recommendations if they exist
+if st.session_state.recommendations_generated and st.session_state.recommended_tracks:
+    st.markdown("""
+        <style>
+            .track-card {
+                background-color: #1DB954;
+                color: white;
+                padding: 10px 15px;
+                margin: 5px 0;
+                border-radius: 12px;
+                font-weight: bold;
+                transition: transform 0.2s;
+            }
+            .track-card:hover {
+                transform: scale(1.02);
+                cursor: pointer;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<div class='recommendations'>", unsafe_allow_html=True)
+    for t in st.session_state.recommended_tracks[:10]:
+        st.markdown(
+            f"<div class='track-card'><img src='{t['img']}' style='width:50px;height:50px;vertical-align:middle;margin-right:10px;'><a href='{t['url']}' target='_blank' style='color:white; text-decoration:none;'>{t['name']} - {t['artist']}</a></div>",
+            unsafe_allow_html=True
+        )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Show refresh button to regenerate recommendations
+    if st.button("Refresh Recommendations"):
+        st.session_state.recommendations_generated = False
+        st.session_state.recommended_tracks = []
+        fetch_recommendations()
+
 
 
 
