@@ -113,22 +113,26 @@ if st.button("Generate Recommendations"):
     if user_genres:
         recommended_tracks = []
         seen_artists = set()  # To avoid duplicate artists
+        seen_albums = set()   # To avoid duplicate albums
 
         for genre in user_genres:
             with st.spinner(f"Fetching top tracks for genre: {genre}..."):
                 try:
-                    results = sp.search(q=f"genre:{genre}", type="track", limit=10)
+                    results = sp.search(q=f"genre:{genre}", type="track", limit=20)
                     tracks = results.get("tracks", {}).get("items", [])
                     for t in tracks:
                         artist_name = t["artists"][0]["name"]
-                        if artist_name not in seen_artists:
+                        album_name = t["album"]["name"]
+                        if artist_name not in seen_artists and album_name not in seen_albums:
                             recommended_tracks.append({
                                 "name": t["name"],
                                 "artist": artist_name,
+                                "album": album_name,
                                 "url": t["external_urls"]["spotify"],
                                 "img": t["album"]["images"][0]["url"] if t["album"]["images"] else ""
                             })
                             seen_artists.add(artist_name)
+                            seen_albums.add(album_name)
                 except spotipy.exceptions.SpotifyException as e:
                     st.warning(f"Could not fetch tracks for genre {genre}: {e}")
 
@@ -144,6 +148,7 @@ if st.button("Generate Recommendations"):
             st.info("Couldn't find top tracks for your genres.")
     else:
         st.info("No genres found from your top artists.")
+
 
 
 
