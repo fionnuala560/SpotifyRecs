@@ -153,9 +153,35 @@ def fetch_recommendations():
     st.session_state.recommended_tracks = recommended_tracks
     st.session_state.recommendations_generated = True
 
+# Custom button styling
+st.markdown("""
+    <style>
+        div.stButton > button:first-child {
+            background-color: #1DB954;
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 20px;
+            transition: background-color 0.2s, transform 0.2s;
+            display: block;
+            margin: 0 auto; /* centers the button */
+        }
+        div.stButton > button:first-child:hover {
+            background-color: #1ed760;
+            transform: scale(1.03);
+            cursor: pointer;
+        }
+        div.stButton > button:first-child:active {
+            background-color: #1aa34a;
+            transform: scale(0.98);
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # Only show the button if recommendations haven't been generated yet
 if not st.session_state.recommendations_generated:
-    if st.button("Generate Recommendations"):
+    if st.button("🎵 Generate Recommendations"):
         fetch_recommendations()
 
 # Show the recommendations if they exist
@@ -164,16 +190,26 @@ if st.session_state.recommendations_generated and st.session_state.recommended_t
         <style>
             .track-card {
                 background-color: #1DB954;
-                color: white;
+                color: white !important;
                 padding: 10px 15px;
                 margin: 5px 0;
                 border-radius: 12px;
                 font-weight: bold;
                 transition: transform 0.2s;
+                display: flex;
+                align-items: center;
+                text-decoration: none !important;
             }
             .track-card:hover {
                 transform: scale(1.02);
                 cursor: pointer;
+                background-color: #1ed760;
+            }
+            .track-card img {
+                width: 50px;
+                height: 50px;
+                border-radius: 6px;
+                margin-right: 10px;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -181,10 +217,17 @@ if st.session_state.recommendations_generated and st.session_state.recommended_t
     st.markdown("<div class='recommendations'>", unsafe_allow_html=True)
     for t in st.session_state.recommended_tracks[:10]:
         st.markdown(
-            f"<div class='track-card'><img src='{t['img']}' style='width:50px;height:50px;vertical-align:middle;margin-right:10px;'><a href='{t['url']}' target='_blank' style='color:white; text-decoration:none;'>{t['name']} - {t['artist']}</a></div>",
+            f"""
+            <a href='{t['url']}' target='_blank' class='track-card'>
+                <img src='{t['img']}'>
+                {t['name']} - {t['artist']}
+            </a>
+            """,
             unsafe_allow_html=True
         )
     st.markdown("</div>", unsafe_allow_html=True)
+
+
 
 
 
