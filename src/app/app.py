@@ -1,6 +1,10 @@
 import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from spotify_auth.auth import authenticate_spotify
 
 # --- Spotify API Setup ---
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
@@ -17,6 +21,15 @@ st.set_page_config(page_title="Spotify Recs App", page_icon="🎵", layout="cent
 st.title("🎵 My Spotify Recommendations App")
 st.header("Discover tracks, artists, and genres tailored for you")
 st.write("See your top Spotify tracks, artists, and genres, and get personalized recommendations.")
+
+# Initial session state
+if "view" not in st.session_state:
+    st.session_state.view = "stats"
+
+# Authenticate with Spotify
+sp = authenticate_spotify()
+if not sp:
+    st.stop()
 
 # --- Custom CSS ---
 st.markdown("""
@@ -68,32 +81,40 @@ st.subheader("Your Top Genres 🎧")
 for g in user_genres:
     st.markdown(f"<div class='box'>{g.title()}</div>", unsafe_allow_html=True)
 
-# --- Button to get recommendations ---
-if st.button("✨ Get Recommendations"):
 
-    # Prepare seeds
-    seed_tracks = [t["id"] for t in top_tracks[:2]]
-    seed_artists = [a["id"] for a in top_artists[:2]]
-    seed_genres = user_genres[:1]  # Just 1 genre
+# --- Get Top Tracks by Genre ---
+st.subheader("Recommended Tracks by Genre 🎧")
 
-    # Remove empty seeds to avoid errors
-    seeds = {}
-    if seed_tracks: seeds["seed_tracks"] = seed_tracks
-    if seed_artists: seeds["seed_artists"] = seed_artists
-    if seed_genres: seeds["seed_genres"] = seed_genres
+if user_genres:
+    recommended_tracks = []
 
-    if not seeds:
-        st.warning("Not enough seeds to generate recommendations.")
+    for genre in user_genres:
+        with st.spinner(f"Fetching top tracks for genre: {genre}..."):
+            try:
+                results = sp.search(q=f"genre:{genre}", type="track", limit=5)
+                tracks = results.get("tracks", {}).get("items", [])
+                for t in tracks:
+                    recommended_tracks.append({
+                        "name": t["name"],
+                        "artist": t["artists"][0]["name"],
+                        "url": t["external_urls"]["spotify"]
+                    })
+            except spotipy.exceptions.SpotifyException as e:
+                st.warning(f"Could not fetch tracks for genre {genre}: {e}")
+
+    if recommended_tracks:
+        st.markdown("<div class='recommendations'>", unsafe_allow_html=True)
+        for t in recommended_tracks:
+            st.markdown(f"- [{t['name']} - {t['artist']}]({t['url']})")
+        st.markdown("</div>", unsafe_allow_html=True)
     else:
-        try:
-            recs = sp.recommendations(limit=10, **seeds)["tracks"]
-            st.subheader("Recommended for You")
-            st.markdown("<div class='recommendations'>", unsafe_allow_html=True)
-            for track in recs:
-                st.markdown(f"- [{track['name']} - {track['artists'][0]['name']}]({track['external_urls']['spotify']})")
-            st.markdown("</div>", unsafe_allow_html=True)
-        except spotipy.exceptions.SpotifyException as e:
-            st.error(f"Could not generate recommendations: {e}")
+        st.info("Couldn't find top tracks for your genres.")
+else:
+    st.info("No genres found from your top artists.")
+
+
+
+
 
 
 
