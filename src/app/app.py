@@ -49,6 +49,7 @@ st.markdown("""
         .track-card:hover, .artist-card:hover, .genre-card:hover {
             transform: scale(1.02);
             cursor: pointer;
+            background-color: #1ed760;
         }
         .track-card img, .artist-card img {
             border-radius: 8px;
