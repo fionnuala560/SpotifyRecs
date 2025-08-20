@@ -35,28 +35,7 @@ def authenticate_spotify():
                 return None
         elif not st.session_state.authenticated:
             auth_url = sp_oauth.get_authorize_url()
-            st.markdown(
-                f"""
-    <a href="{auth_url}" target="_self" style="text-decoration: none;">
-        <button style="
-            background-color: #1DB954;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-top: 1rem;
-        ">
-            Log in with Spotify
-        </button>
-    </a>
-    """,
-                unsafe_allow_html=True
-            )
-
+            st.markdown(f"[Click here to log in with Spotify]({auth_url})")
 
     token_info = st.session_state.get("token_info")
 
