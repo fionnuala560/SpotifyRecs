@@ -117,41 +117,62 @@ if "recommendations_generated" not in st.session_state:
 if "previous_track_ids" not in st.session_state:
     st.session_state.previous_track_ids = set()
 
+import random
+
 def fetch_recommendations():
     recommended_tracks = []
     seen_artists = set()
     seen_albums = set()
+    genre_track_lists = {}
 
+    # Fetch candidate tracks for each genre first
     for genre in user_genres:
         with st.spinner(f"Fetching top tracks for genre: {genre}..."):
             try:
                 results = sp.search(q=f"genre:{genre}", type="track", limit=20)
                 tracks = results.get("tracks", {}).get("items", [])
-                for t in tracks:
-                    track_id = t["id"]
-                    artist_name = t["artists"][0]["name"]
-                    album_name = t["album"]["name"]
-                    if (track_id not in st.session_state.previous_track_ids and
-                            artist_name not in seen_artists and
-                            album_name not in seen_albums):
-
-                        recommended_tracks.append({
-                            "id": track_id,
-                            "name": t["name"],
-                            "artist": artist_name,
-                            "album": album_name,
-                            "url": t["external_urls"]["spotify"],
-                            "img": t["album"]["images"][0]["url"] if t["album"]["images"] else ""
-                        })
-                        seen_artists.add(artist_name)
-                        seen_albums.add(album_name)
+                genre_track_lists[genre] = tracks
             except spotipy.exceptions.SpotifyException as e:
                 st.warning(f"Could not fetch tracks for genre {genre}: {e}")
+                genre_track_lists[genre] = []
 
-    # Save newly recommended track IDs to previous_track_ids
+    # Shuffle each genre's track list so results aren’t always the same
+    for tracks in genre_track_lists.values():
+        random.shuffle(tracks)
+
+    # Round-robin selection: cycle through genres and pick one track at a time
+    while any(genre_track_lists.values()) and len(recommended_tracks) < 30:  # limit total
+        for genre, tracks in list(genre_track_lists.items()):
+            if not tracks:
+                continue
+            t = tracks.pop()
+            track_id = t["id"]
+            artist_name = t["artists"][0]["name"]
+            album_name = t["album"]["name"]
+
+            if (track_id not in st.session_state.previous_track_ids and
+                    artist_name not in seen_artists and
+                    album_name not in seen_albums):
+
+                recommended_tracks.append({
+                    "id": track_id,
+                    "name": t["name"],
+                    "artist": artist_name,
+                    "album": album_name,
+                    "url": t["external_urls"]["spotify"],
+                    "img": t["album"]["images"][0]["url"] if t["album"]["images"] else ""
+                })
+                seen_artists.add(artist_name)
+                seen_albums.add(album_name)
+
+            if len(recommended_tracks) >= 30:
+                break
+
+    # Save results
     st.session_state.previous_track_ids.update([t["id"] for t in recommended_tracks])
     st.session_state.recommended_tracks = recommended_tracks
     st.session_state.recommendations_generated = True
+
 
 # Custom button styling
 st.markdown("""
