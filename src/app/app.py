@@ -18,7 +18,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
 st.set_page_config(page_title="Spotify Recs App", page_icon="🎵", layout="centered")
 
 # --- Title and Header ---
-st.title("🎵 My Spotify Recommendations App")
+st.title("🎵 SpotifyRecs")
 st.header("Discover tracks, artists, and genres tailored for you")
 st.write("See your top Spotify tracks, artists, and genres, and get personalized recommendations.")
 
@@ -82,39 +82,63 @@ for g in user_genres:
     st.markdown(f"<div class='box'>{g.title()}</div>", unsafe_allow_html=True)
 
 
-# --- Get Top Tracks by Genre (unique artists only) ---
-st.subheader("Recommended Tracks by Genre 🎧")
+# --- Recommended Tracks by Genre (unique artists only) ---
+st.subheader("Recommended Tracks 🎧")
 
-if user_genres:
-    recommended_tracks = []
-    seen_artists = set()  # To avoid duplicate artists
+if st.button("Generate Recommendations"):
+    if user_genres:
+        recommended_tracks = []
+        seen_artists = set()  # To avoid duplicate artists
 
-    for genre in user_genres:
-        with st.spinner(f"Fetching top tracks for genre: {genre}..."):
-            try:
-                results = sp.search(q=f"genre:{genre}", type="track", limit=10)
-                tracks = results.get("tracks", {}).get("items", [])
-                for t in tracks:
-                    artist_name = t["artists"][0]["name"]
-                    if artist_name not in seen_artists:
-                        recommended_tracks.append({
-                            "name": t["name"],
-                            "artist": artist_name,
-                            "url": t["external_urls"]["spotify"]
-                        })
-                        seen_artists.add(artist_name)
-            except spotipy.exceptions.SpotifyException as e:
-                st.warning(f"Could not fetch tracks for genre {genre}: {e}")
+        for genre in user_genres:
+            with st.spinner(f"Fetching top tracks for genre: {genre}..."):
+                try:
+                    results = sp.search(q=f"genre:{genre}", type="track", limit=10)
+                    tracks = results.get("tracks", {}).get("items", [])
+                    for t in tracks:
+                        artist_name = t["artists"][0]["name"]
+                        if artist_name not in seen_artists:
+                            recommended_tracks.append({
+                                "name": t["name"],
+                                "artist": artist_name,
+                                "url": t["external_urls"]["spotify"]
+                            })
+                            seen_artists.add(artist_name)
+                except spotipy.exceptions.SpotifyException as e:
+                    st.warning(f"Could not fetch tracks for genre {genre}: {e}")
 
-    if recommended_tracks:
-        st.markdown("<div class='recommendations'>", unsafe_allow_html=True)
-        for t in recommended_tracks[:10]:  # Limit to 10 tracks total
-            st.markdown(f"- [{t['name']} - {t['artist']}]({t['url']})")
-        st.markdown("</div>", unsafe_allow_html=True)
+        if recommended_tracks:
+            # Add some styling
+            st.markdown("""
+                <style>
+                    .track-card {
+                        background-color: #1DB954;
+                        color: white;
+                        padding: 10px 15px;
+                        margin: 5px 0;
+                        border-radius: 12px;
+                        font-weight: bold;
+                        transition: transform 0.2s;
+                    }
+                    .track-card:hover {
+                        transform: scale(1.02);
+                        cursor: pointer;
+                    }
+                </style>
+            """, unsafe_allow_html=True)
+
+            st.markdown("<div class='recommendations'>", unsafe_allow_html=True)
+            for t in recommended_tracks[:10]:  # Limit to 10 tracks total
+                st.markdown(
+                    f"<div class='track-card'><a href='{t['url']}' target='_blank' style='color:white; text-decoration:none;'>{t['name']} - {t['artist']}</a></div>",
+                    unsafe_allow_html=True
+                )
+            st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            st.info("Couldn't find top tracks for your genres.")
     else:
-        st.info("Couldn't find top tracks for your genres.")
-else:
-    st.info("No genres found from your top artists.")
+        st.info("No genres found from your top artists.")
+
 
 
 
