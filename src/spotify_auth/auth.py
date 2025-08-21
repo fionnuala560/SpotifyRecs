@@ -50,6 +50,17 @@ def authenticate_spotify():
 
     if token_info:
         st.session_state.authenticated = True
-        return spotipy.Spotify(auth=token_info["access_token"])
+        sp = spotipy.Spotify(auth=token_info["access_token"])
+
+        # ✅ Reset session data if this is a new user
+        user_id = sp.current_user()['id']
+        if "current_user_id" not in st.session_state or st.session_state.current_user_id != user_id:
+            st.session_state.current_user_id = user_id
+            st.session_state.recommended_tracks = []
+            st.session_state.recommendations_generated = False
+            st.session_state.previous_track_ids = set()
+
+        return sp
 
     return None
+
