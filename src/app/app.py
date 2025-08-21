@@ -1,18 +1,9 @@
 import streamlit as st
 import spotipy
-from spotipy.oauth2 import SpotifyOAuth
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from spotify_auth.auth import authenticate_spotify
-
-# --- Spotify API Setup ---
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-    client_id="YOUR_CLIENT_ID",
-    client_secret="YOUR_CLIENT_SECRET",
-    redirect_uri="http://localhost:8888/callback",
-    scope="user-top-read"
-))
 
 # --- Streamlit Page Config ---
 st.set_page_config(page_title="Spotify Recs App", page_icon="🎵", layout="centered")
