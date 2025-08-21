@@ -1,5 +1,4 @@
 import streamlit as st
-import spotipy
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -19,8 +18,16 @@ if "view" not in st.session_state:
 
 # Authenticate with Spotify
 sp = authenticate_spotify()
-if not sp:
+if not sp or "current_user_id" not in st.session_state:
     st.stop()
+
+user_id = sp.current_user()["id"]
+
+if st.session_state.current_user_id != user_id:
+    st.warning("Session mismatch. Please log in again.")
+    st.session_state.clear()
+    st.experimental_rerun()
+
 
 # --- Custom CSS ---
 st.markdown("""
@@ -124,7 +131,7 @@ def fetch_recommendations():
                 results = sp.search(q=f"genre:{genre}", type="track", limit=20)
                 tracks = results.get("tracks", {}).get("items", [])
                 genre_track_lists[genre] = tracks
-            except spotipy.exceptions.SpotifyException as e:
+            except Exception as e:
                 st.warning(f"Could not fetch tracks for genre {genre}: {e}")
                 genre_track_lists[genre] = []
 
@@ -133,7 +140,7 @@ def fetch_recommendations():
         random.shuffle(tracks)
 
     # Round-robin selection: cycle through genres and pick one track at a time
-    while any(genre_track_lists.values()) and len(recommended_tracks) < 30:  # limit total
+    while any(genre_track_lists.values()) and len(recommended_tracks) < 30:
         for genre, tracks in list(genre_track_lists.items()):
             if not tracks:
                 continue
@@ -165,7 +172,6 @@ def fetch_recommendations():
     st.session_state.recommended_tracks = recommended_tracks
     st.session_state.recommendations_generated = True
 
-
 # Custom button styling
 st.markdown("""
     <style>
@@ -178,7 +184,7 @@ st.markdown("""
             padding: 10px 20px;
             transition: background-color 0.2s, transform 0.2s;
             display: block;
-            margin: 0 auto; /* centers the button */
+            margin: 0 auto;
         }
         div.stButton > button:first-child:hover {
             background-color: #1ed760;
@@ -239,7 +245,6 @@ if st.session_state.recommendations_generated and st.session_state.recommended_t
             unsafe_allow_html=True
         )
     st.markdown("</div>", unsafe_allow_html=True)
-
 
 
 
