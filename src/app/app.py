@@ -172,7 +172,20 @@ def recommendations():
     return redirect(url_for("dashboard"))
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # Distinguish between production (Render) and local development
+    is_production = os.environ.get('RENDER') == 'true'
+
+    # Set host, port, and debug mode based on the environment
+    if is_production:
+        host = '0.0.0.0'  # Required for Render
+        port = int(os.environ.get('PORT', 5000))
+        debug = False
+    else:
+        host = '127.0.0.1' # Default for local development
+        port = 5000
+        debug = True
+
+    app.run(host=host, port=port, debug=debug)
 
 
 
