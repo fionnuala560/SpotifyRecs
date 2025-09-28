@@ -1,250 +1,179 @@
-import streamlit as st
-import sys
+from flask import Flask, redirect, request, render_template, url_for
+from flask_login import LoginManager, UserMixin, login_user, login_required, current_user, logout_user
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from spotify_auth.auth import authenticate_spotify
+import time
 
-# --- Streamlit Page Config ---
-st.set_page_config(page_title="Spotify Recs App", page_icon="🎵", layout="centered")
+app = Flask(__name__)
+app.secret_key = os.urandom(24)
 
-# --- Title and Header ---
-st.title("🎵 SpotifyRecs")
-st.header("Discover tracks, artists, and genres tailored for you")
-st.write("See your top Spotify tracks, artists, and genres, and get personalized recommendations.")
+# --- Flask-Login setup ---
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login"
 
-# Initial session state
-if "view" not in st.session_state:
-    st.session_state.view = "stats"
+# In-memory user store
+users = {}
 
-# Authenticate with Spotify
-sp = authenticate_spotify()
-if not sp or "current_user_id" not in st.session_state:
-    st.stop()
+class User(UserMixin):
+    def __init__(self, spotify_id, token_info):
+        self.id = spotify_id
+        self.token_info = token_info
+        self.recommended_tracks = []
+        self.previous_track_ids = set()
+        self.seen_artists = set()
+        self.seen_albums = set()
 
-user_id = sp.current_user()["id"]
+@login_manager.user_loader
+def load_user(user_id):
+    return users.get(user_id)
 
-if st.session_state.current_user_id != user_id:
-    st.warning("Session mismatch. Please log in again.")
-    st.session_state.clear()
-    st.experimental_rerun()
+# --- Spotify OAuth setup ---
+CLIENT_ID = "6b3b52af29e6458d8e0cd708d84d5159"
+CLIENT_SECRET = "b2ba9d919d0d40b4ae8dba1ff45307b8"
+REDIRECT_URI = "http://127.0.0.1:5000/callback"
+SCOPE = "user-top-read user-read-private"
 
+def get_sp_oauth():
+    return SpotifyOAuth(
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        redirect_uri=REDIRECT_URI,
+        scope=SCOPE,
+        cache_path=None,
+        show_dialog=True
+    )
 
-# --- Custom CSS ---
-st.markdown("""
-    <style>
-        .track-card, .artist-card, .genre-card {
-            background-color: #1DB954;
-            color: white;
-            padding: 10px 15px;
-            margin: 5px 0;
-            border-radius: 12px;
-            font-weight: bold;
-            transition: transform 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .track-card:hover, .artist-card:hover, .genre-card:hover {
-            transform: scale(1.02);
-            cursor: pointer;
-            background-color: #1ed760;
-        }
-        .track-card img, .artist-card img {
-            border-radius: 8px;
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-        }
-        .recommendations {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 12px;
-            background-color: #191414;
-            color: white;
-        }
-        .recommendations a {
-            color: #1DB954;
-            text-decoration: none;
-        }
-    </style>
-""", unsafe_allow_html=True)
+# --- Routes ---
+@app.route("/")
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard"))
+    return render_template("login.html")
 
-# --- Fetch User's Top Data ---
-with st.spinner("Fetching your top Spotify data..."):
-    top_tracks = sp.current_user_top_tracks(limit=10, time_range="short_term")["items"]
+@app.route("/login")
+def login():
+    sp_oauth = get_sp_oauth()
+    return redirect(sp_oauth.get_authorize_url())
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("index"))
+
+@app.route("/callback")
+def callback():
+    sp_oauth = get_sp_oauth()
+    code = request.args.get("code")
+
+    try:
+        token_info = sp_oauth.get_access_token(code, as_dict=True, check_cache=False)
+        token_info["expires_at"] = int(time.time()) + token_info["expires_in"]
+
+        sp = spotipy.Spotify(auth=token_info["access_token"])
+        spotify_id = sp.current_user()["id"]
+
+        user = User(spotify_id, token_info)
+        users[spotify_id] = user
+
+        login_user(user)
+
+        return redirect(url_for("dashboard"))
+
+    except spotipy.exceptions.SpotifyOauthError as e:
+        return f"Authentication Failed: {e.error_description}", 400
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    token_info = current_user.token_info
+    sp_oauth = get_sp_oauth()
+
+    if sp_oauth.is_token_expired(token_info):
+        try:
+            token_info = sp_oauth.refresh_access_token(token_info["refresh_token"])
+            current_user.token_info = token_info
+        except spotipy.exceptions.SpotifyOauthError:
+            logout_user()
+            return redirect(url_for("index"))
+
+    sp = spotipy.Spotify(auth=current_user.token_info["access_token"])
+
+    top_tracks = sp.current_user_top_tracks(limit=10, time_range="long_term")["items"]
+    top_artists = sp.current_user_top_artists(limit=10, time_range="long_term")["items"]
+
+    if not top_tracks or not top_artists:
+        return render_template("dashboard.html", no_data=True)
+
+    tracks = [
+        {"name": t["name"], "artist": t["artists"][0]["name"],
+         "img": t["album"]["images"][0]["url"] if t["album"]["images"] else ""}
+        for t in top_tracks
+    ]
+    artists = [
+        {"name": a["name"], "img": a["images"][0]["url"] if a["images"] else ""}
+        for a in top_artists
+    ]
+    genres = list({g for a in top_artists for g in a.get("genres", [])})[:5]
+    recs = current_user.recommended_tracks if current_user.recommended_tracks else None
+
+    return render_template("dashboard.html", tracks=tracks, artists=artists, genres=genres, recs=recs)
+
+@app.route("/recommendations", methods=["POST"])
+@login_required
+def recommendations():
+    token_info = current_user.token_info
+    sp_oauth = get_sp_oauth()
+
+    if sp_oauth.is_token_expired(token_info):
+        try:
+            token_info = sp_oauth.refresh_access_token(token_info["refresh_token"])
+            current_user.token_info = token_info
+        except spotipy.exceptions.SpotifyOauthError:
+            logout_user()
+            return redirect(url_for("index"))
+
+    sp = spotipy.Spotify(auth=current_user.token_info["access_token"])
+
     top_artists = sp.current_user_top_artists(limit=10, time_range="short_term")["items"]
+    genres = list({g for a in top_artists for g in a.get("genres", [])})[:5]
 
-# --- Display Top Tracks ---
-st.subheader("Your Top Tracks 🎶")
-for track in top_tracks:
-    album_img = track['album']['images'][0]['url'] if track['album']['images'] else ""
-    st.markdown(
-        f"<div class='track-card'><img src='{album_img}'><span>{track['name']} - {track['artists'][0]['name']}</span></div>",
-        unsafe_allow_html=True
-    )
-
-# --- Display Top Artists ---
-st.subheader("Your Top Artists 🎤")
-for artist in top_artists:
-    artist_img = artist['images'][0]['url'] if artist['images'] else ""
-    st.markdown(
-        f"<div class='artist-card'><img src='{artist_img}'><span>{artist['name']}</span></div>",
-        unsafe_allow_html=True
-    )
-
-# --- Extract genres from top artists ---
-user_genres = []
-for artist in top_artists:
-    user_genres.extend(artist.get("genres", []))
-user_genres = list(set(user_genres))[:5]
-
-st.subheader("Your Top Genres 🎧")
-for g in user_genres:
-    st.markdown(
-        f"<div class='genre-card'>{g.title()}</div>",
-        unsafe_allow_html=True
-    )
-
-# --- Recommended Tracks by Genre (unique artists & albums only, no repeats from previous list) ---
-st.subheader("Recommended Tracks by Genre 🎧")
-
-# Initialize session state
-if "recommended_tracks" not in st.session_state:
-    st.session_state.recommended_tracks = []
-if "recommendations_generated" not in st.session_state:
-    st.session_state.recommendations_generated = False
-if "previous_track_ids" not in st.session_state:
-    st.session_state.previous_track_ids = set()
-
-import random
-
-def fetch_recommendations():
-    recommended_tracks = []
-    seen_artists = set()
-    seen_albums = set()
-    genre_track_lists = {}
-
-    # Fetch candidate tracks for each genre first
-    for genre in user_genres:
-        with st.spinner(f"Fetching top tracks for genre: {genre}..."):
-            try:
-                results = sp.search(q=f"genre:{genre}", type="track", limit=20)
-                tracks = results.get("tracks", {}).get("items", [])
-                genre_track_lists[genre] = tracks
-            except Exception as e:
-                st.warning(f"Could not fetch tracks for genre {genre}: {e}")
-                genre_track_lists[genre] = []
-
-    # Shuffle each genre's track list so results aren’t always the same
-    for tracks in genre_track_lists.values():
-        random.shuffle(tracks)
-
-    # Round-robin selection: cycle through genres and pick one track at a time
-    while any(genre_track_lists.values()) and len(recommended_tracks) < 30:
-        for genre, tracks in list(genre_track_lists.items()):
-            if not tracks:
-                continue
-            t = tracks.pop()
+    recs = []
+    for g in genres:
+        results = sp.search(q=f"genre:{g}", type="track", limit=10)
+        for t in results["tracks"]["items"]:
             track_id = t["id"]
             artist_name = t["artists"][0]["name"]
             album_name = t["album"]["name"]
 
-            if (track_id not in st.session_state.previous_track_ids and
-                    artist_name not in seen_artists and
-                    album_name not in seen_albums):
+            if (track_id not in current_user.previous_track_ids and
+                    artist_name not in current_user.seen_artists and
+                    album_name not in current_user.seen_albums):
 
-                recommended_tracks.append({
-                    "id": track_id,
+                recs.append({
                     "name": t["name"],
                     "artist": artist_name,
-                    "album": album_name,
                     "url": t["external_urls"]["spotify"],
                     "img": t["album"]["images"][0]["url"] if t["album"]["images"] else ""
                 })
-                seen_artists.add(artist_name)
-                seen_albums.add(album_name)
 
-            if len(recommended_tracks) >= 30:
+                current_user.previous_track_ids.add(track_id)
+                current_user.seen_artists.add(artist_name)
+                current_user.seen_albums.add(album_name)
+
+            if len(recs) >= 10:
                 break
+        if len(recs) >= 10:
+            break
 
-    # Save results
-    st.session_state.previous_track_ids.update([t["id"] for t in recommended_tracks])
-    st.session_state.recommended_tracks = recommended_tracks
-    st.session_state.recommendations_generated = True
+    current_user.recommended_tracks = recs
+    return redirect(url_for("dashboard"))
 
-# Custom button styling
-st.markdown("""
-    <style>
-        div.stButton > button:first-child {
-            background-color: #1DB954;
-            color: white;
-            font-weight: bold;
-            border: none;
-            border-radius: 12px;
-            padding: 10px 20px;
-            transition: background-color 0.2s, transform 0.2s;
-            display: block;
-            margin: 0 auto;
-        }
-        div.stButton > button:first-child:hover {
-            background-color: #1ed760;
-            transform: scale(1.03);
-            cursor: pointer;
-        }
-        div.stButton > button:first-child:active {
-            background-color: #1aa34a;
-            transform: scale(0.98);
-        }
-    </style>
-""", unsafe_allow_html=True)
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
 
-# Only show the button if recommendations haven't been generated yet
-if not st.session_state.recommendations_generated:
-    if st.button("🎵 Generate Recommendations"):
-        fetch_recommendations()
-
-# Show the recommendations if they exist
-if st.session_state.recommendations_generated and st.session_state.recommended_tracks:
-    st.markdown("""
-        <style>
-            .track-card {
-                background-color: #1DB954;
-                color: white !important;
-                padding: 10px 15px;
-                margin: 5px 0;
-                border-radius: 12px;
-                font-weight: bold;
-                transition: transform 0.2s;
-                display: flex;
-                align-items: center;
-                text-decoration: none !important;
-            }
-            .track-card:hover {
-                transform: scale(1.02);
-                cursor: pointer;
-                background-color: #1ed760;
-            }
-            .track-card img {
-                width: 50px;
-                height: 50px;
-                border-radius: 6px;
-                margin-right: 10px;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<div class='recommendations'>", unsafe_allow_html=True)
-    for t in st.session_state.recommended_tracks[:10]:
-        st.markdown(
-            f"""
-            <a href='{t['url']}' target='_blank' class='track-card'>
-                <img src='{t['img']}'>
-                {t['name']} - {t['artist']}
-            </a>
-            """,
-            unsafe_allow_html=True
-        )
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SpotifyRecs</title>
+    <style>
+        body { background-color: #121212; color: white; font-family: Arial, sans-serif; text-align: center; }
+        h1, h2 { color: #1DB954; }
+        .card {
+            background-color: #1DB954; color: white; padding: 10px 15px; margin: 5px auto;
+            border-radius: 12px; font-weight: bold; transition: transform 0.2s;
+            display: flex; align-items: center; gap: 10px; max-width: 500px;
+        }
+        .card:hover { transform: scale(1.02); background-color: #1ed760; }
+        .card img { border-radius: 8px; width: 50px; height: 50px; object-fit: cover; }
+        .recommendations { margin-top: 20px; padding: 15px; border-radius: 12px; background-color: #191414; }
+        .recommendations a { color: #1DB954; text-decoration: none; }
+        button {
+            background-color: #1DB954; color: white; font-weight: bold; border: none;
+            border-radius: 12px; padding: 10px 20px; transition: background-color 0.2s, transform 0.2s;
+            margin: 20px auto;
+        }
+        button:hover { background-color: #1ed760; transform: scale(1.03); cursor: pointer; }
+        .logout-btn { background-color: #f44336; }
+        .logout-btn:hover { background-color: #da190b; }
+    </style>
+</head>
+<body>
+<h1>🎵 SpotifyRecs</h1>
+<h3>Discover tracks, artists, and genres tailored for you</h3>
+
+<a href="/logout"><button class="logout-btn">Log out</button></a>
+
+{% if no_data %}
+<p>We couldn’t find enough listening data for your account. Play some music on Spotify and try again!</p>
+{% elif tracks %}
+<h2>Your Top Tracks 🎶</h2>
+{% for t in tracks %}
+<div class="card"><img src="{{t.img}}"><span>{{t.name}} - {{t.artist}}</span></div>
+{% endfor %}
+
+<h2>Your Top Artists 🎤</h2>
+{% for a in artists %}
+<div class="card"><img src="{{a.img}}"><span>{{a.name}}</span></div>
+{% endfor %}
+
+<h2>Your Top Genres 🎧</h2>
+{% for g in genres %}
+<div class="card"><span>{{g}}</span></div>
+{% endfor %}
+
+{% if not recs %}
+<form method="POST" action="/recommendations">
+    <button type="submit">🎵 Generate Recommendations</button>
+</form>
+{% else %}
+<h2>Recommended Tracks by Genre 🎧</h2>
+<div class="recommendations">
+    {% for r in recs %}
+    <a href="{{r.url}}" target="_blank">
+        <div class="card"><img src="{{r.img}}"><span>{{r.name}} - {{r.artist}}</span></div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+{% else %}
+<p>Could not load your Spotify data. Please try logging in again.</p>
+{% endif %}
+
+</body>
+</html>
