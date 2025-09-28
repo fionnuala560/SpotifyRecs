@@ -30,9 +30,9 @@ def load_user(user_id):
     return users.get(user_id)
 
 # --- Spotify OAuth setup ---
-CLIENT_ID = os.environ.get("CLIENT_ID")
-CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
-REDIRECT_URI = os.environ.get("REDIRECT_URI")
+CLIENT_ID = "6b3b52af29e6458d8e0cd708d84d5159"
+CLIENT_SECRET = "b2ba9d919d0d40b4ae8dba1ff45307b8"
+REDIRECT_URI = "http://127.0.0.1:5000/callback"
 SCOPE = "user-top-read user-read-private"
 
 def get_sp_oauth():
@@ -171,11 +171,26 @@ def recommendations():
     current_user.recommended_tracks = recs
     return redirect(url_for("dashboard"))
 
-import os
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(debug=True, port=5000)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
