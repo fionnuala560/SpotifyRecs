@@ -30,8 +30,8 @@ def load_user(user_id):
     return users.get(user_id)
 
 # --- Spotify OAuth setup ---
-CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID")
-CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET")
+CLIENT_ID = os.environ.get("CLIENT_ID")
+CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 REDIRECT_URI = os.environ.get("REDIRECT_URI")
 SCOPE = "user-top-read user-read-private"
 
