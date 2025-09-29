@@ -101,8 +101,18 @@ def dashboard():
 
     sp = spotipy.Spotify(auth=current_user.token_info["access_token"])
 
-    top_tracks = sp.current_user_top_tracks(limit=10, time_range="long_term")["items"]
-    top_artists = sp.current_user_top_artists(limit=10, time_range="long_term")["items"]
+    top_tracks = []
+    top_artists = []
+    time_ranges = ["long_term", "medium_term", "short_term"]
+
+    for time_range in time_ranges:
+        top_tracks = sp.current_user_top_tracks(limit=10, time_range=time_range)["items"]
+        top_artists = sp.current_user_top_artists(limit=10, time_range=time_range)["items"]
+        if top_tracks and top_artists:
+            break
+
+    if not top_tracks or not top_artists:
+        return render_template("dashboard.html", no_data=True)
 
     if not top_tracks or not top_artists:
         return render_template("dashboard.html", no_data=True)
